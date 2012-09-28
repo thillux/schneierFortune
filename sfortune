@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+
+import urllib2
+import HTMLParser
+import sys
+
+def getRandomSchneierFact():
+	try:
+		factUrl = urllib2.urlopen('http://www.schneierfacts.com/')
+		return factUrl.read()
+	except Error:
+		print('ERROR: Downloading random Schneier fact failed, exiting.')
+		sys.exit(1)
+
+def findFactPos(factPage):
+	enclosing = ('<p class="fact">','</p>')
+	beginPos = factPage.find(enclosing[0]) + len(enclosing[0])
+	endPos = factPage.find(enclosing[1], beginPos)
+	if beginPos == -1 or endPos == -1:
+		print('ERROR: Fact not found on page, exiting.')
+		sys.exit(2)
+	return (beginPos, endPos)
+
+def main():
+	factHtmlPage = getRandomSchneierFact()
+	factPos = findFactPos(factHtmlPage)
+	factStringEscaped = factHtmlPage[factPos[0]:factPos[1]]
+	factString = HTMLParser.HTMLParser().unescape(factStringEscaped).strip()
+	print factString
+
+if __name__ == "__main__":
+	main()
