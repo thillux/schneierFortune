@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
-from urllib import request as URL
 from html.parser import HTMLParser
-import sys
+from urllib import request as URL
 import argparse
+import sys
+import signal
+import traceback
+
+def signal_handler(signal, frame):
+    sys.exit(0)
+signal.signal(signal.SIGINT, signal_handler)
 
 class FactParser(HTMLParser):
 	def __init__(self):
@@ -77,7 +83,7 @@ def getSchneierFactPage(number = None):
 	if isinstance( number, ( int ) ):
 		assert(number > 0)
 		factUrl = factUrl + 'fact/' + str(number)
-	urlHandle = URL.urlopen(factUrl)
+	urlHandle = URL.urlopen(factUrl, timeout=5)
 	return str(urlHandle.read(), "utf-8")
 
 def getFactFromPage(factHtmlPage):
@@ -95,10 +101,16 @@ def getNextLinkFromPage(factHtmlPage):
 	return link
 
 def handleFact(number = None):
+	factHtmlPage = ""
 	try:
 		factHtmlPage = getSchneierFactPage(number)
+	except KeyboardInterrupt:
+		None
+	except SystemExit:
+		None
 	except:
 		print('ERROR: Downloading random Schneier fact failed. Exiting.')
+		traceback.print_exc()
 		sys.exit(1)
 
 	fact = getFactFromPage(factHtmlPage)
@@ -125,7 +137,10 @@ if __name__ == "__main__":
 		factnumber = 1
 		while True:
 			(fact, nextLink) = handleFact(factnumber)
-			print(fact)
+			if fact != None:
+				print(fact)
+			else:
+				break
 			if nextLink == None:
 				break
 			else:
