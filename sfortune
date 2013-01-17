@@ -6,10 +6,15 @@ import argparse
 import sys
 import signal
 import traceback
+import unittest
 
 def signal_handler(signal, frame):
-    sys.exit(0)
+	sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
+
+################################################################################
+
+# parse Schneier fact out of HTML page
 
 class FactParser(HTMLParser):
 	def __init__(self):
@@ -38,6 +43,10 @@ class FactParser(HTMLParser):
 
 	def getFact(self):
 		return self.unescape(self.fact).strip()
+
+################################################################################
+
+# parses link to next Schneier fact out of page, used to get all facts
 
 class NextLinkParser(HTMLParser):
 	def __init__(self):
@@ -77,46 +86,54 @@ class NextLinkParser(HTMLParser):
 		else:
 			return self.nextLink
 
+################################################################################
 
-def getSchneierFactPage(number = None):
-	factUrl = "http://www.schneierfacts.com/"
-	if isinstance( number, ( int ) ):
-		assert(number > 0)
-		factUrl = factUrl + 'fact/' + str(number)
-	urlHandle = URL.urlopen(factUrl, timeout=5)
-	return str(urlHandle.read(), "utf-8")
+class FactDownloader:
 
-def getFactFromPage(factHtmlPage):
-	pageParser = FactParser()
-	pageParser.feed(factHtmlPage)
-	pageParser.close()
-	fact = pageParser.getFact()
-	return fact
-
-def getNextLinkFromPage(factHtmlPage):
-	pageParser = NextLinkParser()
-	pageParser.feed(factHtmlPage)
-	pageParser.close()
-	link = pageParser.getLink()
-	return link
-
-def handleFact(number = None):
-	factHtmlPage = ""
-	try:
-		factHtmlPage = getSchneierFactPage(number)
-	except KeyboardInterrupt:
+	def __init__(self):
 		None
-	except SystemExit:
-		None
-	except:
-		print('ERROR: Downloading random Schneier fact failed. Exiting.')
-		traceback.print_exc()
-		sys.exit(1)
 
-	fact = getFactFromPage(factHtmlPage)
-	nextLink = getNextLinkFromPage(factHtmlPage)
+	def getSchneierFactPage(self, number = None):
+		factUrl = "http://www.schneierfacts.com/"
+		if isinstance( number, ( int ) ):
+			assert(number > 0)
+			factUrl = factUrl + 'fact/' + str(number)
+		urlHandle = URL.urlopen(factUrl, timeout=5)
+		return str(urlHandle.read(), "utf-8")
 
-	return (fact, nextLink)
+	def getFactFromPage(self, factHtmlPage):
+		pageParser = FactParser()
+		pageParser.feed(factHtmlPage)
+		pageParser.close()
+		fact = pageParser.getFact()
+		return fact
+
+	def getNextLinkFromPage(self, factHtmlPage):
+		pageParser = NextLinkParser()
+		pageParser.feed(factHtmlPage)
+		pageParser.close()
+		link = pageParser.getLink()
+		return link
+
+	def handleFact(self, number = None):
+		factHtmlPage = ""
+		try:
+			factHtmlPage = self.getSchneierFactPage(number)
+		except KeyboardInterrupt:
+			None
+		except SystemExit:
+			None
+		except:
+			print('ERROR: Downloading random Schneier fact failed. Exiting.')
+			traceback.print_exc()
+			sys.exit(1)
+
+		fact = self.getFactFromPage(factHtmlPage)
+		nextLink = self.getNextLinkFromPage(factHtmlPage)
+
+		return (fact, nextLink)
+
+################################################################################
 
 if __name__ == "__main__":
 	# parse arguments
@@ -130,13 +147,15 @@ if __name__ == "__main__":
 		print("ERROR: Do you want all or only a single fact?")
 		sys.exit(1)
 
+	factDL = FactDownloader()
+
 	if not args.all:
-		(fact, nextLink) = handleFact(args.factnumber)
+		(fact, nextLink) = factDL.handleFact(args.factnumber)
 		print(fact)
 	else:
 		factnumber = 1
 		while True:
-			(fact, nextLink) = handleFact(factnumber)
+			(fact, nextLink) = factDL.handleFact(factnumber)
 			if fact != None:
 				print(fact)
 			else:
