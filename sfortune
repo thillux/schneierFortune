@@ -33,34 +33,100 @@ class FactParser(HTMLParser):
 	def getFact(self):
 		return self.unescape(self.fact).strip()
 
-def getSchneierFact(number = None):
+class NextLinkParser(HTMLParser):
+	def __init__(self):
+		HTMLParser.__init__(self)
+		self.nextLink = ""
+		self.nextLinkFound = False
+		self.linkText = ""
+		self.linkActive = False
+
+	def handle_starttag(self, tag, attrs):
+		if tag == 'a' and not self.nextLinkFound:
+			self.linkActive = True
+
+			for attr in attrs:
+				if attr[0] == "href":
+					self.nextLink = attr[1]
+					break
+
+			if not self.nextLinkFound:
+				self.linkText = ""
+
+	def handle_data(self, data):
+		if self.linkActive:
+			self.linkText = self.linkText + data
+
+	def handle_endtag(self, tag):
+		if self.linkActive == True:
+			self.linkActive = False
+			if self.linkText.find("Next Fact") != -1:
+				self.nextLinkFound = True
+			else:
+				self.linkText = ""
+
+	def getLink(self):
+		if not self.nextLinkFound:
+			return None
+		else:
+			return self.nextLink
+
+
+def getSchneierFactPage(number = None):
 	factUrl = "http://www.schneierfacts.com/"
 	if isinstance( number, ( int ) ):
 		assert(number > 0)
 		factUrl = factUrl + 'fact/' + str(number)
-
 	urlHandle = URL.urlopen(factUrl)
 	return str(urlHandle.read(), "utf-8")
+
+def getFactFromPage(factHtmlPage):
+	pageParser = FactParser()
+	pageParser.feed(factHtmlPage)
+	pageParser.close()
+	fact = pageParser.getFact()
+	return fact
+
+def getNextLinkFromPage(factHtmlPage):
+	pageParser = NextLinkParser()
+	pageParser.feed(factHtmlPage)
+	pageParser.close()
+	link = pageParser.getLink()
+	return link
+
+def handleFact(number = None):
+	try:
+		factHtmlPage = getSchneierFactPage(number)
+	except:
+		print('ERROR: Downloading random Schneier fact failed. Exiting.')
+		sys.exit(1)
+
+	fact = getFactFromPage(factHtmlPage)
+	nextLink = getNextLinkFromPage(factHtmlPage)
+
+	return (fact, nextLink)
 
 if __name__ == "__main__":
 	# parse arguments
 	parser = argparse.ArgumentParser(description='Load ironic facts about Bruce Schneier from http://www.schneierfacts.com')
 	parser.add_argument('factnumber', metavar='N', type=int, nargs='?',
 						help='number of the fact to load')
+	parser.add_argument('--all', action="store_true", default=False, help="Fetch all Facts from http://www.schneierfacts.com")
 	args = parser.parse_args()
 
-	# set factnumber, maybe None if there is no number given
-	factNumber = args.factnumber
-
-	try:
-		factHtmlPage = getSchneierFact(factNumber)
-	except:
-		print('ERROR: Downloading random Schneier fact failed. Exiting.')
+	if args.factnumber != None and args.all:
+		print("ERROR: Do you want all or only a single fact?")
 		sys.exit(1)
 
-	pageParser = FactParser()
-	pageParser.feed(factHtmlPage)
-	pageParser.close()
-
-	fact = pageParser.getFact()
-	print(fact)
+	if not args.all:
+		(fact, nextLink) = handleFact(args.factnumber)
+		print(fact)
+	else:
+		factnumber = 1
+		while True:
+			(fact, nextLink) = handleFact(factnumber)
+			print(fact)
+			if nextLink == None:
+				break
+			else:
+				factnumber = int(nextLink.split("/")[-1])
