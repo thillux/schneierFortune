@@ -10,7 +10,6 @@ import unittest
 
 def signal_handler(signal, frame):
 	sys.exit(0)
-signal.signal(signal.SIGINT, signal_handler)
 
 ################################################################################
 
@@ -135,7 +134,24 @@ class FactDownloader:
 
 ################################################################################
 
+def getAllFacts():
+	factDL = FactDownloader()
+	factnumber = 1
+	while True:
+		(fact, nextLink) = factDL.handleFact(factnumber)
+		if fact != None:
+			print(fact)
+		else:
+			break
+		if nextLink == None:
+			break
+		else:
+			factnumber = int(nextLink.split("/")[-1])
+
 if __name__ == "__main__":
+	# add signal handler
+	signal.signal(signal.SIGINT, signal_handler)
+
 	# parse arguments
 	parser = argparse.ArgumentParser(description='Load ironic facts about Bruce Schneier from http://www.schneierfacts.com')
 	parser.add_argument('factnumber', metavar='N', type=int, nargs='?',
@@ -147,20 +163,9 @@ if __name__ == "__main__":
 		print("ERROR: Do you want all or only a single fact?")
 		sys.exit(1)
 
-	factDL = FactDownloader()
-
 	if not args.all:
+		factDL = FactDownloader()
 		(fact, nextLink) = factDL.handleFact(args.factnumber)
 		print(fact)
 	else:
-		factnumber = 1
-		while True:
-			(fact, nextLink) = factDL.handleFact(factnumber)
-			if fact != None:
-				print(fact)
-			else:
-				break
-			if nextLink == None:
-				break
-			else:
-				factnumber = int(nextLink.split("/")[-1])
+		getAllFacts()
