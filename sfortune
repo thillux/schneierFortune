@@ -5,8 +5,7 @@ from urllib import request as URL
 import argparse
 import sys
 import signal
-import traceback
-import unittest
+import json
 
 def signal_handler(signal, frame):
 	sys.exit(0)
@@ -137,16 +136,20 @@ class FactDownloader:
 def getAllFacts():
 	factDL = FactDownloader()
 	factnumber = 1
+	facts = {}
+
 	while True:
 		(fact, nextLink) = factDL.handleFact(factnumber)
 		if fact != None:
-			print(fact)
+			facts[factnumber] = fact
 		else:
 			break
 		if nextLink == None:
 			break
 		else:
 			factnumber = int(nextLink.split("/")[-1])
+
+	return facts
 
 if __name__ == "__main__":
 	# add signal handler
@@ -168,4 +171,5 @@ if __name__ == "__main__":
 		(fact, nextLink) = factDL.handleFact(args.factnumber)
 		print(fact)
 	else:
-		getAllFacts()
+		facts = getAllFacts()
+		print(json.dumps(facts))
